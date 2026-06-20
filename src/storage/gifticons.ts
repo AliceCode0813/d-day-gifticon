@@ -17,6 +17,10 @@ async function saveGifticons(items: Gifticon[]): Promise<void> {
   await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(items));
 }
 
+export async function saveAllGifticons(items: Gifticon[]): Promise<void> {
+  await saveGifticons(items);
+}
+
 export async function addGifticon(input: GifticonInput): Promise<Gifticon> {
   const items = await loadGifticons();
   const gifticon: Gifticon = {

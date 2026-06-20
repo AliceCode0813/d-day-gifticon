@@ -3,6 +3,7 @@ import {
   addGifticon,
   deleteGifticon,
   loadGifticons,
+  saveAllGifticons,
   updateGifticon,
 } from '../storage/gifticons';
 import {
@@ -11,7 +12,8 @@ import {
   scheduleGifticonNotifications,
 } from '../notifications/schedule';
 import { Gifticon, GifticonInput } from '../types/gifticon';
-import { sortGifticons } from '../utils/dday';
+import { isExpired, sortGifticons } from '../utils/dday';
+import { applyGifticonLifecycle } from '../utils/gifticonLifecycle';
 
 export function useGifticons() {
   const [gifticons, setGifticons] = useState<Gifticon[]>([]);
@@ -20,8 +22,28 @@ export function useGifticons() {
 
   const refresh = useCallback(async () => {
     setLoading(true);
-    const items = await loadGifticons();
-    setGifticons(sortGifticons(items));
+    const raw = await loadGifticons();
+    const processed = applyGifticonLifecycle(raw);
+    const purgedIds = raw
+      .filter((item) => !processed.some((kept) => kept.id === item.id))
+      .map((item) => item.id);
+
+    for (const id of purgedIds) {
+      await cancelGifticonNotifications(id);
+    }
+
+    const needsSave =
+      processed.length !== raw.length ||
+      processed.some((item) => {
+        const original = raw.find((entry) => entry.id === item.id);
+        return original?.closedAt !== item.closedAt;
+      });
+
+    if (needsSave) {
+      await saveAllGifticons(processed);
+    }
+
+    setGifticons(sortGifticons(processed));
     setLoading(false);
   }, []);
 
@@ -30,24 +52,19 @@ export function useGifticons() {
   }, [refresh]);
 
   const activeGifticons = useMemo(
-    () => gifticons.filter((item) => !item.isUsed),
+    () => gifticons.filter((item) => !item.isUsed && !isExpired(item.expiresAt)),
     [gifticons],
   );
 
-  const usedGifticons = useMemo(
-    () => gifticons.filter((item) => item.isUsed),
-    [gifticons],
-  );
-
-  const filteredActive = useMemo(() => {
+  const listGifticons = useMemo(() => {
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return activeGifticons;
+    if (!normalized) return gifticons;
 
-    return activeGifticons.filter((item) => {
+    return gifticons.filter((item) => {
       const haystack = `${item.title} ${item.memo ?? ''}`.toLowerCase();
       return haystack.includes(normalized);
     });
-  }, [activeGifticons, query]);
+  }, [gifticons, query]);
 
   const createGifticon = useCallback(async (input: GifticonInput) => {
     const created = await addGifticon(input);
@@ -62,7 +79,7 @@ export function useGifticons() {
       if (!updated) return null;
 
       await cancelGifticonNotifications(id);
-      if (!updated.isUsed) {
+      if (!updated.isUsed && !isExpired(updated.expiresAt)) {
         await scheduleGifticonNotifications(updated);
       }
       await refresh();
@@ -72,7 +89,11 @@ export function useGifticons() {
   );
 
   const markAsUsed = useCallback(
-    async (id: string) => editGifticon(id, { isUsed: true }),
+    async (id: string) =>
+      editGifticon(id, {
+        isUsed: true,
+        closedAt: new Date().toISOString(),
+      }),
     [editGifticon],
   );
 
@@ -88,8 +109,8 @@ export function useGifticons() {
 
   return {
     gifticons,
-    activeGifticons: filteredActive,
-    usedGifticons,
+    activeGifticons,
+    listGifticons,
     loading,
     query,
     setQuery,

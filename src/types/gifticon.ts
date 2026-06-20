@@ -6,6 +6,7 @@ export type Gifticon = {
   memo?: string;
   isUsed: boolean;
   createdAt: string;
+  closedAt?: string;
 };
 
 export type GifticonInput = {

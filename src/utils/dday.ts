@@ -1,7 +1,7 @@
 export type DDayInfo = {
   daysLeft: number;
   label: string;
-  urgency: 'expired' | 'critical' | 'warning' | 'normal';
+  urgency: 'expired' | 'used' | 'critical' | 'warning' | 'normal';
 };
 
 export function parseDateOnly(value: string): Date {
@@ -16,9 +16,17 @@ export function toDateOnlyString(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+export function isExpired(expiresAt: string): boolean {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const expiry = parseDateOnly(expiresAt);
+  expiry.setHours(0, 0, 0, 0);
+  return expiry.getTime() < today.getTime();
+}
+
 export function getDDayInfo(expiresAt: string, isUsed: boolean): DDayInfo {
   if (isUsed) {
-    return { daysLeft: Infinity, label: '사용 완료', urgency: 'normal' };
+    return { daysLeft: Infinity, label: '사용완료', urgency: 'used' };
   }
 
   const today = new Date();
@@ -30,7 +38,7 @@ export function getDDayInfo(expiresAt: string, isUsed: boolean): DDayInfo {
   const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
 
   if (daysLeft < 0) {
-    return { daysLeft, label: '만료됨', urgency: 'expired' };
+    return { daysLeft, label: '기간지남', urgency: 'expired' };
   }
   if (daysLeft === 0) {
     return { daysLeft, label: 'D-Day', urgency: 'critical' };
@@ -46,17 +54,24 @@ export function getDDayInfo(expiresAt: string, isUsed: boolean): DDayInfo {
 
 export function sortGifticons<T extends { expiresAt: string; isUsed: boolean }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
-    if (a.isUsed !== b.isUsed) {
-      return a.isUsed ? 1 : -1;
+    const aInactive = a.isUsed || isExpired(a.expiresAt);
+    const bInactive = b.isUsed || isExpired(b.expiresAt);
+
+    if (aInactive !== bInactive) {
+      return aInactive ? 1 : -1;
     }
 
-    const aInfo = getDDayInfo(a.expiresAt, a.isUsed);
-    const bInfo = getDDayInfo(b.expiresAt, b.isUsed);
+    if (aInactive) {
+      const aInfo = getDDayInfo(a.expiresAt, a.isUsed);
+      const bInfo = getDDayInfo(b.expiresAt, b.isUsed);
+      if (aInfo.urgency !== bInfo.urgency) {
+        if (aInfo.urgency === 'used') return -1;
+        if (bInfo.urgency === 'used') return 1;
+      }
+      return b.expiresAt.localeCompare(a.expiresAt);
+    }
 
-    if (aInfo.urgency === 'expired' && bInfo.urgency !== 'expired') return 1;
-    if (bInfo.urgency === 'expired' && aInfo.urgency !== 'expired') return -1;
-
-    return aInfo.daysLeft - bInfo.daysLeft;
+    return getDDayInfo(a.expiresAt, a.isUsed).daysLeft - getDDayInfo(b.expiresAt, b.isUsed).daysLeft;
   });
 }
 

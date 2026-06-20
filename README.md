@@ -5,21 +5,75 @@
 ## 주요 기능
 
 - 기프티콘 등록 (카메라 / 갤러리)
+- **OCR 자동 인식** (상품명, 만료일, D-Day 추정)
 - 만료일 D-Day 표시 및 임박 순 정렬
+- **달력 탭**에서 만료일별 기프티콘 확인
+- **알림 탭**에서 시점·시간 설정 (달력 앱 스타일)
 - 사진 탭 시 전체 화면 확대
-- D-7, D-3, D-1, D-Day 푸시 알림
+- 만료 알림 (시점·시간 사용자 설정)
 - 검색, 사용 완료, 삭제
 
-## 실행 방법
+## 실행 방법 (Android)
 
-```bash
-npm install
-npm start
+### 가장 쉬운 방법
+
+프로젝트 폴더에서 **`start-android.cmd`** 파일을 **더블클릭**
+
+- PowerShell 오류 없음 (`npm.cmd` 사용)
+- **다른 Wi-Fi / LTE**에서도 연결 가능 (Cloudflare 터널)
+- PC와 폰이 **같은 Wi-Fi**면 `npm.cmd run start:lan` 도 가능
+
+### USB로 연결 (가장 안정적, Android)
+
+폰을 USB로 PC에 연결하고 USB 디버깅을 켠 뒤:
+
+```cmd
+start-usb.cmd
 ```
 
-- Android: `npm run android` 또는 Expo Go 앱에서 QR 스캔
-- iOS: `npm run ios` (macOS 필요) 또는 Expo Go
-- Web: `npm run web`
+또는:
+
+```cmd
+npm.cmd run start:usb
+```
+
+Wi-Fi/LTE와 상관없이 USB로 Metro에 연결됩니다.
+
+### 수동 실행 (다른 Wi-Fi / LTE)
+
+```cmd
+cd C:\Users\rok\Projects\dday-gifticon
+npm.cmd run start:android
+```
+
+같은 Wi-Fi일 때:
+
+```cmd
+npm.cmd run start:lan
+```
+
+PowerShell에서 `npm` 오류가 나면 **`npm.cmd`** 를 사용하세요.
+
+```powershell
+Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+```
+
+### 폰에서 열기
+
+1. Play Store에서 **Expo Go** 설치 및 **최신 업데이트** (SDK 54)
+2. PC에서 서버 실행 후 **`Using Expo Go`** 확인
+3. **`c`** 키 → QR 코드 표시
+4. Expo Go → **Scan QR code**
+
+### 스캔 오류가 날 때
+
+| 증상 | 해결 |
+|------|------|
+| `development build` / `expo-dev-client` 오류 | `Ctrl+C` 후 `npm.cmd run start:android` 다시 실행 |
+| Could not connect / 같은 Wi-Fi 아님 | `start-android.cmd` 또는 `start-usb.cmd` (USB) |
+| `Port 8083 is being used` | 다른 터미널에서 Expo 종료(`Ctrl+C`) 후 다시 실행 |
+| QR이 안 열림 | Expo Go 최신 버전 설치, 터미널에서 `c` 키로 QR 다시 표시 |
+| 로딩만 되다 실패 | USB 연결(`start-usb.cmd`) 시도, 또는 PC 방화벽에서 Node 허용 |
 
 ## GitHub 연동
 
@@ -32,14 +86,16 @@ git branch -M main
 git push -u origin main
 ```
 
-## 스토어 배포 (참고)
+## 스토어 / 지인 배포
 
-- [Expo EAS Build](https://docs.expo.dev/build/introduction/)로 Android/iOS 빌드
-- Google Play / App Store 개발자 계정 필요
+**GitHub Actions에서 APK 받기:** [BUILD.md](./BUILD.md) → Actions → **Build Android APK** → Artifacts
+
+- Android: `build-android.cmd` 또는 GitHub Actions
+- iPhone: `build-ios.cmd` → Apple Developer ($99/년)
 
 ## 기술 스택
 
-- Expo SDK 56
+- Expo SDK 54 (Play Store Expo Go 호환)
 - React Native
 - TypeScript
 - AsyncStorage (로컬 저장)

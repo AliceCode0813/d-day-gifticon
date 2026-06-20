@@ -2,8 +2,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { AddGifticonScreen } from '../screens/AddGifticonScreen';
 import { DetailScreen } from '../screens/DetailScreen';
-import { HomeScreen } from '../screens/HomeScreen';
 import { ImageViewerScreen } from '../screens/ImageViewerScreen';
+import { MainTabNavigator } from './MainTabNavigator';
 import { RootStackParamList } from './types';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -13,8 +13,8 @@ export function AppNavigator() {
     <NavigationContainer>
       <Stack.Navigator>
         <Stack.Screen
-          name="Home"
-          component={HomeScreen}
+          name="MainTabs"
+          component={MainTabNavigator}
           options={{ headerShown: false }}
         />
         <Stack.Screen

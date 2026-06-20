@@ -1,5 +1,15 @@
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { Alert, Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { DDayBadge } from '../components/DDayBadge';
 import { useGifticonContext } from '../context/GifticonContext';
@@ -9,8 +19,17 @@ import { formatExpiryDate, getDDayInfo } from '../utils/dday';
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
 export function DetailScreen({ navigation, route }: Props) {
-  const { gifticons, markAsUsed, removeGifticon } = useGifticonContext();
+  const { gifticons, editGifticon, markAsUsed, removeGifticon } = useGifticonContext();
   const gifticon = gifticons.find((item) => item.id === route.params.id);
+  const [title, setTitle] = useState(gifticon?.title ?? '');
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+
+  useEffect(() => {
+    if (gifticon) {
+      setTitle(gifticon.title);
+      setIsEditingTitle(false);
+    }
+  }, [gifticon?.id, gifticon?.title]);
 
   if (!gifticon) {
     return (
@@ -22,6 +41,21 @@ export function DetailScreen({ navigation, route }: Props) {
 
   const dday = getDDayInfo(gifticon.expiresAt, gifticon.isUsed);
 
+  const saveTitle = async () => {
+    const trimmed = title.trim();
+    if (!trimmed) {
+      Alert.alert('이름 필요', '기프티콘 이름을 입력해 주세요.');
+      setTitle(gifticon.title);
+      setIsEditingTitle(false);
+      return;
+    }
+
+    if (trimmed !== gifticon.title) {
+      await editGifticon(gifticon.id, { title: trimmed });
+    }
+    setIsEditingTitle(false);
+  };
+
   const confirmDelete = () => {
     Alert.alert('삭제', '이 기프티콘을 삭제할까요?', [
       { text: '취소', style: 'cancel' },
@@ -30,7 +64,7 @@ export function DetailScreen({ navigation, route }: Props) {
         style: 'destructive',
         onPress: async () => {
           await removeGifticon(gifticon.id);
-          navigation.popToTop();
+          navigation.navigate('MainTabs');
         },
       },
     ]);
@@ -57,6 +91,7 @@ export function DetailScreen({ navigation, route }: Props) {
             navigation.navigate('ImageViewer', {
               imageUri: gifticon.imageUri,
               title: gifticon.title,
+              gifticonId: gifticon.id,
             })
           }
         >
@@ -65,7 +100,29 @@ export function DetailScreen({ navigation, route }: Props) {
         </Pressable>
 
         <View style={styles.meta}>
-          <Text style={styles.title}>{gifticon.title}</Text>
+          {isEditingTitle ? (
+            <View style={styles.titleEditRow}>
+              <TextInput
+                value={title}
+                onChangeText={setTitle}
+                style={styles.titleInput}
+                placeholder="기프티콘 이름"
+                placeholderTextColor="#94A3B8"
+                autoFocus
+                onSubmitEditing={saveTitle}
+              />
+              <Pressable style={styles.saveTitleButton} onPress={saveTitle}>
+                <Text style={styles.saveTitleButtonText}>저장</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={styles.titleRow}>
+              <Text style={styles.title}>{gifticon.title}</Text>
+              <Pressable style={styles.editTitleButton} onPress={() => setIsEditingTitle(true)}>
+                <Text style={styles.editTitleButtonText}>이름 수정</Text>
+              </Pressable>
+            </View>
+          )}
           <DDayBadge info={dday} />
         </View>
         <Text style={styles.expiry}>{formatExpiryDate(gifticon.expiresAt)}</Text>
@@ -117,14 +174,56 @@ const styles = StyleSheet.create({
   meta: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 12,
   },
-  title: {
+  titleRow: {
     flex: 1,
+    gap: 8,
+  },
+  titleEditRow: {
+    flex: 1,
+    gap: 8,
+  },
+  title: {
     fontSize: 22,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  titleInput: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  editTitleButton: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    backgroundColor: '#EFF6FF',
+  },
+  editTitleButtonText: {
+    color: '#2563EB',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  saveTitleButton: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2563EB',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  saveTitleButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
   },
   expiry: {
     fontSize: 15,

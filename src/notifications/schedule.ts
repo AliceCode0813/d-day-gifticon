@@ -1,8 +1,9 @@
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { loadNotificationSettings } from '../storage/notificationSettings';
 import { Gifticon } from '../types/gifticon';
-import { getDDayInfo, parseDateOnly } from '../utils/dday';
+import { parseDateOnly } from '../utils/dday';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -12,8 +13,6 @@ Notifications.setNotificationHandler({
     shouldSetBadge: true,
   }),
 });
-
-const REMINDER_OFFSETS = [7, 3, 1, 0];
 
 export async function requestNotificationPermissions(): Promise<boolean> {
   if (!Device.isDevice) {
@@ -36,20 +35,34 @@ export async function requestNotificationPermissions(): Promise<boolean> {
   return status === 'granted';
 }
 
-function reminderDate(expiresAt: string, daysBefore: number): Date {
+function reminderDate(
+  expiresAt: string,
+  daysBefore: number,
+  hour: number,
+  minute: number,
+): Date {
   const date = parseDateOnly(expiresAt);
   date.setDate(date.getDate() - daysBefore);
-  date.setHours(9, 0, 0, 0);
+  date.setHours(hour, minute, 0, 0);
   return date;
 }
 
 function reminderBody(daysBefore: number): string {
   if (daysBefore === 0) return '오늘이 만료일이에요. 잊지 말고 사용하세요!';
+  if (daysBefore === 1) return '내일 만료돼요. 미리 확인해 보세요.';
   return `${daysBefore}일 후 만료돼요. 미리 확인해 보세요.`;
+}
+
+function offsetLabel(daysBefore: number): string {
+  if (daysBefore === 0) return 'D-Day';
+  return `D-${daysBefore}`;
 }
 
 export async function scheduleGifticonNotifications(gifticon: Gifticon): Promise<void> {
   if (gifticon.isUsed) return;
+
+  const settings = await loadNotificationSettings();
+  if (!settings.enabled || settings.offsets.length === 0) return;
 
   const granted = await requestNotificationPermissions();
   if (!granted) return;
@@ -58,13 +71,18 @@ export async function scheduleGifticonNotifications(gifticon: Gifticon): Promise
 
   const now = Date.now();
 
-  for (const offset of REMINDER_OFFSETS) {
-    const triggerDate = reminderDate(gifticon.expiresAt, offset);
+  for (const offset of settings.offsets) {
+    const triggerDate = reminderDate(
+      gifticon.expiresAt,
+      offset,
+      settings.hour,
+      settings.minute,
+    );
     if (triggerDate.getTime() <= now) continue;
 
     await Notifications.scheduleNotificationAsync({
       content: {
-        title: `${gifticon.title} ${offset === 0 ? 'D-Day' : `D-${offset}`}`,
+        title: `${gifticon.title} ${offsetLabel(offset)}`,
         body: reminderBody(offset),
         data: { gifticonId: gifticon.id },
       },

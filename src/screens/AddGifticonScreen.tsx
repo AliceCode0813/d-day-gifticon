@@ -2,6 +2,7 @@ import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Image,
   Platform,
@@ -17,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useGifticonContext } from '../context/GifticonContext';
 import { RootStackParamList } from '../navigation/types';
 import { toDateOnlyString } from '../utils/dday';
+import { recognizeGifticonFromImage } from '../utils/ocr';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Add'>;
 
@@ -28,6 +30,41 @@ export function AddGifticonScreen({ navigation }: Props) {
   const [expiresAt, setExpiresAt] = useState(toDateOnlyString(new Date()));
   const [showDatePicker, setShowDatePicker] = useState(Platform.OS === 'ios');
   const [saving, setSaving] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeHint, setRecognizeHint] = useState('');
+
+  const runAutoRecognize = async (uri: string) => {
+    setRecognizing(true);
+    setRecognizeHint('사진에서 상품명과 만료일을 읽는 중...');
+    try {
+      const parsed = await recognizeGifticonFromImage(uri);
+
+      if (parsed.title) setTitle(parsed.title);
+      if (parsed.expiresAt) setExpiresAt(parsed.expiresAt);
+
+      if (parsed.title || parsed.expiresAt) {
+        const ddayText =
+          parsed.daysLeft === undefined
+            ? ''
+            : parsed.daysLeft < 0
+              ? ' (만료됨)'
+              : parsed.daysLeft === 0
+                ? ' (D-Day)'
+                : ` (D-${parsed.daysLeft})`;
+        setRecognizeHint(
+          `자동 인식 완료${parsed.expiresAt ? ddayText : ''}. 틀리면 직접 수정해 주세요.`,
+        );
+      } else {
+        setRecognizeHint('글자는 읽었지만 상품명/만료일을 찾지 못했어요. 직접 입력해 주세요.');
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '자동 인식에 실패했어요.';
+      setRecognizeHint(message);
+      Alert.alert('자동 인식 실패', `${message}\n직접 입력해 주세요.`);
+    } finally {
+      setRecognizing(false);
+    }
+  };
 
   const pickImage = async (source: 'camera' | 'library') => {
     const permission =
@@ -53,6 +90,7 @@ export function AddGifticonScreen({ navigation }: Props) {
 
     if (!result.canceled && result.assets[0]?.uri) {
       setImageUri(result.assets[0].uri);
+      setRecognizeHint('사진을 선택했어요. 자동 인식을 누르거나 직접 입력해 주세요.');
     }
   };
 
@@ -103,6 +141,26 @@ export function AddGifticonScreen({ navigation }: Props) {
         </View>
         {imageUri ? <Image source={{ uri: imageUri }} style={styles.preview} /> : null}
 
+        {imageUri ? (
+          <View style={styles.recognizeBox}>
+            <Pressable
+              style={[styles.recognizeButton, recognizing && styles.disabledButton]}
+              onPress={() => runAutoRecognize(imageUri)}
+              disabled={recognizing}
+            >
+              {recognizing ? (
+                <ActivityIndicator color="#2563EB" />
+              ) : (
+                <Text style={styles.recognizeButtonText}>자동 인식</Text>
+              )}
+            </Pressable>
+            {recognizeHint ? <Text style={styles.recognizeHint}>{recognizeHint}</Text> : null}
+            <Text style={styles.recognizeNote}>
+              사진의 글자를 읽어 상품명과 만료일을 채워요. 인식률은 사진 선명도에 따라 달라요.
+            </Text>
+          </View>
+        ) : null}
+
         <Text style={styles.label}>상품명</Text>
         <TextInput
           value={title}
@@ -141,7 +199,7 @@ export function AddGifticonScreen({ navigation }: Props) {
         <Pressable
           style={[styles.primaryButton, saving && styles.disabledButton]}
           onPress={handleSave}
-          disabled={saving}
+          disabled={saving || recognizing}
         >
           <Text style={styles.primaryButtonText}>{saving ? '저장 중...' : '등록하기'}</Text>
         </Pressable>
@@ -186,6 +244,32 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     backgroundColor: '#E2E8F0',
     marginTop: 8,
+  },
+  recognizeBox: {
+    marginTop: 8,
+    gap: 8,
+  },
+  recognizeButton: {
+    backgroundColor: '#DBEAFE',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  recognizeButtonText: {
+    color: '#1D4ED8',
+    fontWeight: '700',
+  },
+  recognizeHint: {
+    color: '#334155',
+    fontSize: 13,
+    lineHeight: 18,
+  },
+  recognizeNote: {
+    color: '#64748B',
+    fontSize: 12,
+    lineHeight: 17,
   },
   input: {
     backgroundColor: '#FFFFFF',

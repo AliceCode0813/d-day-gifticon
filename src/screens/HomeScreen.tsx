@@ -1,3 +1,5 @@
+import { CompositeScreenProps } from '@react-navigation/native';
+import { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useEffect } from 'react';
 import {
@@ -14,19 +16,26 @@ import { EmptyState } from '../components/EmptyState';
 import { GifticonCard } from '../components/GifticonCard';
 import { useGifticonContext } from '../context/GifticonContext';
 import { requestNotificationPermissions } from '../notifications/schedule';
-import { RootStackParamList } from '../navigation/types';
+import { MainTabParamList, RootStackParamList } from '../navigation/types';
 
-type Props = NativeStackScreenProps<RootStackParamList, 'Home'>;
+type Props = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, 'DDay'>,
+  NativeStackScreenProps<RootStackParamList>
+>;
 
 export function HomeScreen({ navigation }: Props) {
-  const { activeGifticons, loading, query, setQuery, syncNotifications } = useGifticonContext();
+  const { listGifticons, loading, query, setQuery, syncNotifications } = useGifticonContext();
 
   useEffect(() => {
-    requestNotificationPermissions().then(() => syncNotifications());
+    requestNotificationPermissions()
+      .then(() => syncNotifications())
+      .catch(() => {
+        // Expo Go 환경에서는 알림 권한/스케줄이 제한될 수 있음
+      });
   }, [syncNotifications]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
       <View style={styles.header}>
         <View>
           <Text style={styles.kicker}>디데이기프티콘</Text>
@@ -49,18 +58,20 @@ export function HomeScreen({ navigation }: Props) {
         <ActivityIndicator style={styles.loader} color="#2563EB" />
       ) : (
         <FlatList
-          data={activeGifticons}
+          data={listGifticons}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={
-            activeGifticons.length === 0 ? styles.emptyList : styles.list
-          }
+          contentContainerStyle={listGifticons.length === 0 ? styles.emptyList : styles.list}
           ListEmptyComponent={<EmptyState />}
           renderItem={({ item }) => (
             <GifticonCard
               gifticon={item}
               onPress={() => navigation.navigate('Detail', { id: item.id })}
               onImagePress={() =>
-                navigation.navigate('ImageViewer', { imageUri: item.imageUri, title: item.title })
+                navigation.navigate('ImageViewer', {
+                  imageUri: item.imageUri,
+                  title: item.title,
+                  gifticonId: item.id,
+                })
               }
             />
           )}
@@ -116,7 +127,7 @@ const styles = StyleSheet.create({
   },
   list: {
     paddingHorizontal: 20,
-    paddingBottom: 24,
+    paddingBottom: 32,
   },
   emptyList: {
     flexGrow: 1,

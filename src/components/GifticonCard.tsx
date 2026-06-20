@@ -1,6 +1,6 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gifticon } from '../types/gifticon';
-import { formatExpiryDate, getDDayInfo } from '../utils/dday';
+import { formatExpiryDate, getDDayInfo, isExpired } from '../utils/dday';
 import { DDayBadge } from './DDayBadge';
 
 type Props = {
@@ -11,9 +11,10 @@ type Props = {
 
 export function GifticonCard({ gifticon, onPress, onImagePress }: Props) {
   const dday = getDDayInfo(gifticon.expiresAt, gifticon.isUsed);
+  const inactive = gifticon.isUsed || isExpired(gifticon.expiresAt);
 
   return (
-    <Pressable style={styles.card} onPress={onPress}>
+    <Pressable style={[styles.card, inactive && styles.cardInactive]} onPress={onPress}>
       <Pressable onPress={onImagePress}>
         <Image source={{ uri: gifticon.imageUri }} style={styles.thumbnail} />
       </Pressable>
@@ -49,6 +50,10 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
+  },
+  cardInactive: {
+    opacity: 0.72,
+    backgroundColor: '#F8FAFC',
   },
   thumbnail: {
     width: 72,

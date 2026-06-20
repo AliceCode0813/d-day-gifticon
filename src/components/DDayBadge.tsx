@@ -3,6 +3,7 @@ import { DDayInfo } from '../utils/dday';
 
 const COLORS = {
   expired: { bg: '#FEE2E2', text: '#B91C1C' },
+  used: { bg: '#E2E8F0', text: '#475569' },
   critical: { bg: '#FECACA', text: '#DC2626' },
   warning: { bg: '#FEF3C7', text: '#D97706' },
   normal: { bg: '#DCFCE7', text: '#15803D' },

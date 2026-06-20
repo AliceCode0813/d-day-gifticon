@@ -7,7 +7,10 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "description": "받은 기프티콘의 만료일을 D-Day로 관리하는 앱",
+    "scheme": "dday-gifticon",
     "ios": {
+      "bundleIdentifier": "com.alicecode0813.ddaygifticon",
+      "buildNumber": "1",
       "supportsTablet": true,
       "infoPlist": {
         "NSCameraUsageDescription": "기프티콘 사진을 촬영하기 위해 카메라 접근이 필요합니다.",
@@ -15,6 +18,8 @@
       }
     },
     "android": {
+      "package": "com.alicecode0813.ddaygifticon",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -22,11 +27,11 @@
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
       "permissions": [
-        "CAMERA",
-        "READ_MEDIA_IMAGES",
-        "POST_NOTIFICATIONS"
-      ],
-      "predictiveBackGestureEnabled": false
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.RECORD_AUDIO"
+      ]
     },
     "plugins": [
       "expo-notifications",
@@ -36,10 +41,17 @@
           "photosPermission": "기프티콘 사진을 선택하기 위해 사진 보관함 접근이 필요합니다.",
           "cameraPermission": "기프티콘 사진을 촬영하기 위해 카메라 접근이 필요합니다."
         }
-      ]
+      ],
+      "expo-asset",
+      "expo-font"
     ],
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "e6fffc5e-6d84-4586-9f0a-82a64c23dfac"
+      }
     }
   }
 }
