@@ -27,7 +27,9 @@ git push origin main
 
 1. 완료된 workflow run 클릭
 2. 아래 **Artifacts** → **dday-gifticon-apk** 다운로드
-3. 압축 풀고 `app-debug.apk` → 폰에 설치
+3. 압축 풀고 **`app-release.apk`** → 폰에 설치
+
+> 이전 `app-debug.apk`는 PC 서버 없이 실행되지 않습니다. **release APK**만 사용하세요.
 
 **비용:** GitHub Actions 무료 한도 내 무료 (Expo 계정 불필요)
 

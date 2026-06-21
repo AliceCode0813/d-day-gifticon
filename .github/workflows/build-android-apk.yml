@@ -7,7 +7,6 @@ on:
       - main
     paths-ignore:
       - '**.md'
-      - '.github/**'
 
 concurrency:
   group: android-apk-${{ github.ref }}
@@ -32,9 +31,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Android project
-        run: npx expo prebuild --platform android --no-install
-
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
@@ -44,19 +40,21 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Build debug APK
-        working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
+      - name: Build release APK
+        env:
+          CI: true
+          EXPO_NO_TELEMETRY: 1
+        run: npx expo run:android --variant release --no-install --no-bundler
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: dday-gifticon-apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
           if-no-files-found: error
 
       - name: Summary
         run: |
           echo "### Android APK ready" >> "$GITHUB_STEP_SUMMARY"
-          echo "Download **dday-gifticon-apk** from this run's Artifacts." >> "$GITHUB_STEP_SUMMARY"
+          echo "Download **dday-gifticon-apk** (app-release.apk) from Artifacts." >> "$GITHUB_STEP_SUMMARY"
