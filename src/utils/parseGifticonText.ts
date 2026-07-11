@@ -1,5 +1,7 @@
 export type ParsedGifticon = {
   title?: string;
+  brand?: string;
+  amount?: number;
   expiresAt?: string;
   daysLeft?: number;
   rawHints: string[];
@@ -33,6 +35,14 @@ const BRAND_PATTERNS: { pattern: RegExp; name: string }[] = [
   { pattern: /쿠팡/i, name: '쿠팡' },
   { pattern: /네이버/i, name: '네이버' },
   { pattern: /카카오/i, name: '카카오' },
+  { pattern: /설빙/i, name: '설빙' },
+  { pattern: /공차|GONG\s*CHA/i, name: '공차' },
+  { pattern: /할리스|HOLLYS/i, name: '할리스' },
+  { pattern: /폴\s*바셋|PAUL\s*BASSETT/i, name: '폴바셋' },
+  { pattern: /뚜레쥬르|TOUS\s*LES\s*JOURS/i, name: '뚜레쥬르' },
+  { pattern: /신세계/i, name: '신세계' },
+  { pattern: /현대백화점/i, name: '현대백화점' },
+  { pattern: /롯데백화점/i, name: '롯데백화점' },
 ];
 
 const PRODUCT_KEYWORDS =
@@ -159,6 +169,33 @@ function detectBrand(text: string): string | undefined {
   return undefined;
 }
 
+function detectAmount(text: string): number | undefined {
+  const patterns: RegExp[] = [
+    /금액\s*[:：]?\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\s*원?/i,
+    /([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)\s*원/,
+    /₩\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)/,
+    /KRW\s*([0-9]{1,3}(?:,[0-9]{3})+|[0-9]+)/i,
+  ];
+
+  const candidates: number[] = [];
+  for (const pattern of patterns) {
+    for (const match of text.matchAll(new RegExp(pattern.source, pattern.flags.includes('g') ? pattern.flags : `${pattern.flags}g`))) {
+      const raw = match[1]?.replace(/,/g, '');
+      const value = Number(raw);
+      if (!Number.isFinite(value) || value <= 0 || value > 10_000_000) continue;
+      // 바코드/전화 같은 긴 숫자는 제외
+      if (raw.length >= 8) continue;
+      candidates.push(value);
+    }
+  }
+
+  if (candidates.length === 0) return undefined;
+  // 금액권은 보통 1,000원 단위가 많음. 가장 그럴듯한 값 선택
+  const preferred = candidates.filter((value) => value >= 1000 && value % 100 === 0);
+  const pool = preferred.length > 0 ? preferred : candidates;
+  return Math.max(...pool);
+}
+
 function detectProductLine(text: string, brand?: string): string | undefined {
   const lines = text
     .split(/\r?\n/)
@@ -168,6 +205,7 @@ function detectProductLine(text: string, brand?: string): string | undefined {
   for (const line of lines) {
     if (EXPIRY_KEYWORDS.test(line)) continue;
     if (/^\d+$/.test(line)) continue;
+    if (/원$/.test(line) && !PRODUCT_KEYWORDS.test(line)) continue;
     if (brand && line.includes(brand) && PRODUCT_KEYWORDS.test(line)) return line.slice(0, 40);
     if (PRODUCT_KEYWORDS.test(line)) return line.slice(0, 40);
   }
@@ -192,18 +230,37 @@ function calcDaysLeft(expiresAt: string): number {
 export function parseGifticonFromText(text: string): ParsedGifticon {
   const normalized = text.replace(/\u00A0/g, ' ');
   const brand = detectBrand(normalized);
+  const amount = detectAmount(normalized);
   const expiry = pickBestExpiry(extractDateCandidates(normalized));
   const productLine = detectProductLine(normalized, brand);
 
   const title = productLine || (brand ? `${brand} 기프티콘` : undefined);
-  const rawHints = [expiry?.hint, productLine, brand ? `브랜드: ${brand}` : undefined].filter(
-    (item): item is string => Boolean(item),
-  );
+  const rawHints = [
+    expiry?.hint,
+    productLine,
+    brand ? `브랜드: ${brand}` : undefined,
+    amount ? `금액: ${amount.toLocaleString('ko-KR')}원` : undefined,
+  ].filter((item): item is string => Boolean(item));
 
   return {
     title,
+    brand,
+    amount,
     expiresAt: expiry?.expiresAt,
     daysLeft: expiry ? calcDaysLeft(expiry.expiresAt) : undefined,
     rawHints,
   };
+}
+
+export function formatAmount(amount?: number): string | undefined {
+  if (amount === undefined || amount === null || !Number.isFinite(amount)) return undefined;
+  return `${amount.toLocaleString('ko-KR')}원`;
+}
+
+export function parseAmountInput(value: string): number | undefined {
+  const digits = value.replace(/[^\d]/g, '');
+  if (!digits) return undefined;
+  const amount = Number(digits);
+  if (!Number.isFinite(amount) || amount <= 0) return undefined;
+  return amount;
 }

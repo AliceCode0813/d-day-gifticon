@@ -17,14 +17,39 @@ import { GifticonCard } from '../components/GifticonCard';
 import { useGifticonContext } from '../context/GifticonContext';
 import { requestNotificationPermissions } from '../notifications/schedule';
 import { MainTabParamList, RootStackParamList } from '../navigation/types';
+import { GIFTICON_FILTER_OPTIONS, GifticonFilter } from '../types/gifticon';
 
 type Props = CompositeScreenProps<
   BottomTabScreenProps<MainTabParamList, 'DDay'>,
   NativeStackScreenProps<RootStackParamList>
 >;
 
+const EMPTY_COPY: Record<GifticonFilter, { title: string; subtitle: string }> = {
+  active: {
+    title: '사용 가능한 기프티콘이 없어요',
+    subtitle: '사진을 추가하면 만료 임박 순으로 보여드릴게요.',
+  },
+  used: {
+    title: '사용 완료한 기프티콘이 없어요',
+    subtitle: '사용한 기프티콘은 여기에서 확인할 수 있어요.',
+  },
+  expired: {
+    title: '만료된 기프티콘이 없어요',
+    subtitle: '기간이 지난 기프티콘이 여기에 모여요.',
+  },
+};
+
 export function HomeScreen({ navigation }: Props) {
-  const { listGifticons, loading, query, setQuery, syncNotifications } = useGifticonContext();
+  const {
+    listGifticons,
+    loading,
+    query,
+    setQuery,
+    filter,
+    setFilter,
+    filterCounts,
+    syncNotifications,
+  } = useGifticonContext();
 
   useEffect(() => {
     requestNotificationPermissions()
@@ -33,6 +58,8 @@ export function HomeScreen({ navigation }: Props) {
         // Expo Go 환경에서는 알림 권한/스케줄이 제한될 수 있음
       });
   }, [syncNotifications]);
+
+  const empty = EMPTY_COPY[filter];
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
@@ -46,10 +73,28 @@ export function HomeScreen({ navigation }: Props) {
         </Pressable>
       </View>
 
+      <View style={styles.filterRow}>
+        {GIFTICON_FILTER_OPTIONS.map((option) => {
+          const selected = filter === option.value;
+          const count = filterCounts[option.value];
+          return (
+            <Pressable
+              key={option.value}
+              style={[styles.filterChip, selected && styles.filterChipSelected]}
+              onPress={() => setFilter(option.value)}
+            >
+              <Text style={[styles.filterChipText, selected && styles.filterChipTextSelected]}>
+                {option.label} {count}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
+
       <TextInput
         value={query}
         onChangeText={setQuery}
-        placeholder="브랜드명, 메모 검색"
+        placeholder="브랜드, 상품명, 금액, 메모 검색"
         placeholderTextColor="#94A3B8"
         style={styles.search}
       />
@@ -61,7 +106,7 @@ export function HomeScreen({ navigation }: Props) {
           data={listGifticons}
           keyExtractor={(item) => item.id}
           contentContainerStyle={listGifticons.length === 0 ? styles.emptyList : styles.list}
-          ListEmptyComponent={<EmptyState />}
+          ListEmptyComponent={<EmptyState title={empty.title} subtitle={empty.subtitle} />}
           renderItem={({ item }) => (
             <GifticonCard
               gifticon={item}
@@ -89,7 +134,7 @@ const styles = StyleSheet.create({
   header: {
     paddingHorizontal: 20,
     paddingTop: 8,
-    paddingBottom: 16,
+    paddingBottom: 12,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -113,6 +158,33 @@ const styles = StyleSheet.create({
   addButtonText: {
     color: '#FFFFFF',
     fontWeight: '700',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: 20,
+    marginBottom: 12,
+  },
+  filterChip: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 10,
+    alignItems: 'center',
+  },
+  filterChipSelected: {
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
+  },
+  filterChipText: {
+    color: '#475569',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  filterChipTextSelected: {
+    color: '#FFFFFF',
   },
   search: {
     marginHorizontal: 20,

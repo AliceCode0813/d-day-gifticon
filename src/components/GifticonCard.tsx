@@ -1,6 +1,7 @@
 import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Gifticon } from '../types/gifticon';
 import { formatExpiryDate, getDDayInfo, isExpired } from '../utils/dday';
+import { formatAmount } from '../utils/parseGifticonText';
 import { DDayBadge } from './DDayBadge';
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
 export function GifticonCard({ gifticon, onPress, onImagePress }: Props) {
   const dday = getDDayInfo(gifticon.expiresAt, gifticon.isUsed);
   const inactive = gifticon.isUsed || isExpired(gifticon.expiresAt);
+  const amountText = formatAmount(gifticon.amount);
 
   return (
     <Pressable style={[styles.card, inactive && styles.cardInactive]} onPress={onPress}>
@@ -26,6 +28,16 @@ export function GifticonCard({ gifticon, onPress, onImagePress }: Props) {
           </Text>
           <DDayBadge info={dday} />
         </View>
+        {gifticon.brand ? (
+          <Text style={styles.brand} numberOfLines={1}>
+            {gifticon.brand}
+            {amountText ? ` · ${amountText}` : ''}
+          </Text>
+        ) : amountText ? (
+          <Text style={styles.brand} numberOfLines={1}>
+            {amountText}
+          </Text>
+        ) : null}
         <Text style={styles.expiry}>{formatExpiryDate(gifticon.expiresAt)}</Text>
         {gifticon.memo ? (
           <Text style={styles.memo} numberOfLines={1}>
@@ -78,12 +90,17 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
   },
+  brand: {
+    fontSize: 13,
+    color: '#475569',
+    fontWeight: '600',
+  },
   expiry: {
     fontSize: 13,
     color: '#64748B',
   },
   memo: {
-    fontSize: 13,
-    color: '#475569',
+    fontSize: 12,
+    color: '#94A3B8',
   },
 });

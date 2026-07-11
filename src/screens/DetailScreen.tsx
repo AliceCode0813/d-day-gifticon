@@ -15,6 +15,7 @@ import { DDayBadge } from '../components/DDayBadge';
 import { useGifticonContext } from '../context/GifticonContext';
 import { RootStackParamList } from '../navigation/types';
 import { formatExpiryDate, getDDayInfo } from '../utils/dday';
+import { formatAmount, parseAmountInput } from '../utils/parseGifticonText';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Detail'>;
 
@@ -22,14 +23,20 @@ export function DetailScreen({ navigation, route }: Props) {
   const { gifticons, editGifticon, markAsUsed, removeGifticon } = useGifticonContext();
   const gifticon = gifticons.find((item) => item.id === route.params.id);
   const [title, setTitle] = useState(gifticon?.title ?? '');
-  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [brand, setBrand] = useState(gifticon?.brand ?? '');
+  const [amountText, setAmountText] = useState(
+    gifticon?.amount !== undefined ? String(gifticon.amount) : '',
+  );
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (gifticon) {
       setTitle(gifticon.title);
-      setIsEditingTitle(false);
+      setBrand(gifticon.brand ?? '');
+      setAmountText(gifticon.amount !== undefined ? String(gifticon.amount) : '');
+      setIsEditing(false);
     }
-  }, [gifticon?.id, gifticon?.title]);
+  }, [gifticon?.id, gifticon?.title, gifticon?.brand, gifticon?.amount]);
 
   if (!gifticon) {
     return (
@@ -40,20 +47,25 @@ export function DetailScreen({ navigation, route }: Props) {
   }
 
   const dday = getDDayInfo(gifticon.expiresAt, gifticon.isUsed);
+  const amountDisplay = formatAmount(gifticon.amount);
 
-  const saveTitle = async () => {
-    const trimmed = title.trim();
-    if (!trimmed) {
+  const saveEdits = async () => {
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
       Alert.alert('이름 필요', '기프티콘 이름을 입력해 주세요.');
       setTitle(gifticon.title);
-      setIsEditingTitle(false);
+      setBrand(gifticon.brand ?? '');
+      setAmountText(gifticon.amount !== undefined ? String(gifticon.amount) : '');
+      setIsEditing(false);
       return;
     }
 
-    if (trimmed !== gifticon.title) {
-      await editGifticon(gifticon.id, { title: trimmed });
-    }
-    setIsEditingTitle(false);
+    await editGifticon(gifticon.id, {
+      title: trimmedTitle,
+      brand: brand.trim() || undefined,
+      amount: parseAmountInput(amountText),
+    });
+    setIsEditing(false);
   };
 
   const confirmDelete = () => {
@@ -100,8 +112,9 @@ export function DetailScreen({ navigation, route }: Props) {
         </Pressable>
 
         <View style={styles.meta}>
-          {isEditingTitle ? (
-            <View style={styles.titleEditRow}>
+          {isEditing ? (
+            <View style={styles.editBlock}>
+              <Text style={styles.editLabel}>상품명</Text>
               <TextInput
                 value={title}
                 onChangeText={setTitle}
@@ -109,17 +122,35 @@ export function DetailScreen({ navigation, route }: Props) {
                 placeholder="기프티콘 이름"
                 placeholderTextColor="#94A3B8"
                 autoFocus
-                onSubmitEditing={saveTitle}
               />
-              <Pressable style={styles.saveTitleButton} onPress={saveTitle}>
+              <Text style={styles.editLabel}>브랜드</Text>
+              <TextInput
+                value={brand}
+                onChangeText={setBrand}
+                style={styles.titleInput}
+                placeholder="브랜드"
+                placeholderTextColor="#94A3B8"
+              />
+              <Text style={styles.editLabel}>금액</Text>
+              <TextInput
+                value={amountText}
+                onChangeText={setAmountText}
+                style={styles.titleInput}
+                placeholder="예: 15000"
+                placeholderTextColor="#94A3B8"
+                keyboardType="number-pad"
+              />
+              <Pressable style={styles.saveTitleButton} onPress={saveEdits}>
                 <Text style={styles.saveTitleButtonText}>저장</Text>
               </Pressable>
             </View>
           ) : (
             <View style={styles.titleRow}>
               <Text style={styles.title}>{gifticon.title}</Text>
-              <Pressable style={styles.editTitleButton} onPress={() => setIsEditingTitle(true)}>
-                <Text style={styles.editTitleButtonText}>이름 수정</Text>
+              {gifticon.brand ? <Text style={styles.brand}>{gifticon.brand}</Text> : null}
+              {amountDisplay ? <Text style={styles.amount}>{amountDisplay}</Text> : null}
+              <Pressable style={styles.editTitleButton} onPress={() => setIsEditing(true)}>
+                <Text style={styles.editTitleButtonText}>정보 수정</Text>
               </Pressable>
             </View>
           )}
@@ -179,16 +210,32 @@ const styles = StyleSheet.create({
   },
   titleRow: {
     flex: 1,
-    gap: 8,
+    gap: 6,
   },
-  titleEditRow: {
+  editBlock: {
     flex: 1,
-    gap: 8,
+    gap: 6,
+  },
+  editLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    marginTop: 4,
   },
   title: {
     fontSize: 22,
     fontWeight: '800',
     color: '#0F172A',
+  },
+  brand: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  amount: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#2563EB',
   },
   titleInput: {
     backgroundColor: '#FFFFFF',
@@ -197,8 +244,8 @@ const styles = StyleSheet.create({
     borderColor: '#CBD5E1',
     paddingHorizontal: 14,
     paddingVertical: 10,
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 16,
+    fontWeight: '600',
     color: '#0F172A',
   },
   editTitleButton: {
@@ -207,6 +254,7 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 8,
     backgroundColor: '#EFF6FF',
+    marginTop: 4,
   },
   editTitleButtonText: {
     color: '#2563EB',
@@ -219,6 +267,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingHorizontal: 14,
     paddingVertical: 8,
+    marginTop: 8,
   },
   saveTitleButtonText: {
     color: '#FFFFFF',

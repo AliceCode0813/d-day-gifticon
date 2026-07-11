@@ -34,6 +34,25 @@ export async function addGifticon(input: GifticonInput): Promise<Gifticon> {
   return gifticon;
 }
 
+export async function addGifticons(inputs: GifticonInput[]): Promise<Gifticon[]> {
+  if (inputs.length === 0) return [];
+
+  const items = await loadGifticons();
+  const created = inputs.map((input) => {
+    const gifticon: Gifticon = {
+      id: createId(),
+      ...input,
+      isUsed: false,
+      createdAt: new Date().toISOString(),
+    };
+    items.push(gifticon);
+    return gifticon;
+  });
+
+  await saveGifticons(items);
+  return created;
+}
+
 export async function updateGifticon(
   id: string,
   updates: Partial<Omit<Gifticon, 'id' | 'createdAt'>>,
@@ -50,4 +69,8 @@ export async function updateGifticon(
 export async function deleteGifticon(id: string): Promise<void> {
   const items = await loadGifticons();
   await saveGifticons(items.filter((item) => item.id !== id));
+}
+
+export async function replaceAllGifticons(items: Gifticon[]): Promise<void> {
+  await saveGifticons(items);
 }

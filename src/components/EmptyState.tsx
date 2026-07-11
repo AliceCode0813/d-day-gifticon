@@ -1,11 +1,19 @@
 import { StyleSheet, Text, View } from 'react-native';
 
-export function EmptyState() {
+type Props = {
+  title?: string;
+  subtitle?: string;
+};
+
+export function EmptyState({
+  title = '아직 등록된 기프티콘이 없어요',
+  subtitle = '받은 기프티콘 사진을 올리면 D-Day를 알려드릴게요.',
+}: Props) {
   return (
     <View style={styles.container}>
       <Text style={styles.emoji}>🎁</Text>
-      <Text style={styles.title}>아직 등록된 기프티콘이 없어요</Text>
-      <Text style={styles.subtitle}>받은 기프티콘 사진을 올리면 D-Day를 알려드릴게요.</Text>
+      <Text style={styles.title}>{title}</Text>
+      <Text style={styles.subtitle}>{subtitle}</Text>
     </View>
   );
 }
