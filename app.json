@@ -33,6 +33,10 @@
         "android.permission.RECORD_AUDIO"
       ]
     },
+    "androidNavigationBar": {
+      "backgroundColor": "#FFFFFF",
+      "barStyle": "dark-content"
+    },
     "plugins": [
       "expo-notifications",
       [
@@ -43,6 +47,14 @@
         }
       ],
       "expo-document-picker",
+      [
+        "expo-navigation-bar",
+        {
+          "position": "relative",
+          "backgroundColor": "#FFFFFF",
+          "barStyle": "dark"
+        }
+      ],
       "expo-asset",
       "expo-font"
     ],
