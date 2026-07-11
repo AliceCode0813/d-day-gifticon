@@ -40,11 +40,15 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Prebuild Android project
+        run: npx expo prebuild --platform android --no-install
+
       - name: Build release APK
+        working-directory: android
         env:
           CI: true
           EXPO_NO_TELEMETRY: 1
-        run: npx expo run:android --variant release --no-install --no-bundler
+        run: ./gradlew assembleRelease --no-daemon
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
